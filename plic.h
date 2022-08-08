@@ -1,0 +1,9 @@
+
+#define PLIC_BASE         0xc000000
+#define PLIC_INT_ENABLE   (PLIC_BASE + 0x002000)
+#define PLIC_PRIORITY     (PLIC_BASE)
+#define PLIC_THRESHOLD    (PLIC_BASE + 0x200000)
+#define PLIC_CLAIM        (PLIC_BASE + 0x200004)
+#define PLIC_COMPLETE     (PLIC_BASE + 0x200004)
+
+#define PLIC_USB_ID 3
