@@ -21,6 +21,7 @@
 #define SPI_CSMODE_MASK 3
 #define SPI_CSMODE_AUTO 0
 #define SPI_CSMODE_HOLD 2
+#define SPI_CSMODE_OFF  3
 
 #define SPI_TXDATA (SPI_BASE + 0x48)
 #define SPI_TXDATA_FULL (1 << 31)

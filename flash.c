@@ -70,33 +70,26 @@ int spi_transfer_raw(const uint8_t* tx_buf, uint8_t* rx_buf, int len) {
 
 int spi_transfer(const uint8_t* tx_buf, uint8_t* rx_buf, int len) {
     /* Hold the chip select line for all len transferred */
-    reg_write32(SPI_CSMODE, ~(SPI_CSMODE_MASK));
+    reg_write32(SPI_CSMODE, SPI_CSMODE_OFF);
     reg_write32(SPI_CSMODE, SPI_CSMODE_HOLD);
 
     spi_transfer_raw(tx_buf, rx_buf, len);
 
-    /* On the last byte, set CSMODE to auto so that the chip select transitions
-     * back to high The reason that CS pin is not deasserted after transmitting
-     * out the byte buffer is timing. The code on the host side likely executes
-     * faster than the ability of FIFO to send out bytes. After the host
-     * iterates through the array, fifo is likely not cleared yet. If host
-     * deasserts the CS pin immediately, the following bytes in the output FIFO
-     * will not be sent consecutively.
-     * There needs to be a better way to handle this. */
-    reg_write32(SPI_CSMODE, ~(SPI_CSMODE_MASK));
+    reg_write32(SPI_CSMODE, SPI_CSMODE_OFF);
 
     return 0;
 }
 
 int spi_transfer_cmd_addr_with_payload(const uint8_t* cmd_addr_buf, const uint8_t* tx_payload_buf, uint8_t* rx_payload_buf, int len) {
     /* Hold the chip select line for all len transferred */
-    reg_write32(SPI_CSMODE, ~(SPI_CSMODE_MASK));
+    reg_write32(SPI_CSMODE, SPI_CSMODE_OFF);
     reg_write32(SPI_CSMODE, SPI_CSMODE_HOLD);
 
     spi_transfer_raw(cmd_addr_buf, NULL, 4);
     spi_transfer_raw(tx_payload_buf, rx_payload_buf, len);
 
     reg_write32(SPI_CSMODE, ~(SPI_CSMODE_MASK));
+    reg_write32(SPI_CSMODE, SPI_CSMODE_OFF);
 
     return 0;
 }

@@ -4,7 +4,6 @@
 #include "interrupt.h"
 #include "uart.h"
 #include "flash.h"
-#include "littlefs_api.h"
 
 // canokey-core
 #include "common.h"
@@ -48,11 +47,32 @@ int strong_user_presence_test(void) {
     return 0;
 }
 
+#define TICK 48000
+
+static uint64_t read_cycles(void) {
+    uint32_t cycles;
+    uint32_t cycles_h, cycles_h2;
+    do {
+        asm volatile ("csrr %0, mcycleh": "=r" (cycles_h));
+        asm volatile ("csrr %0, mcycle" : "=r" (cycles));
+        asm volatile ("csrr %0, mcycleh": "=r" (cycles_h2));
+    } while (cycles_h != cycles_h2);
+    return (((uint64_t)cycles_h) << 32 | cycles);
+}
+
+
 void device_delay(int tick) {
+    uint64_t prev = read_cycles();
+    while (1) {
+        uint64_t next = read_cycles();
+        if (next - prev > tick * TICK) {
+            break;
+        }
+    }
     return;
 }
 uint32_t device_get_tick(void) {
-    return 0;
+    return read_cycles() / TICK;
 }
 void device_disable_irq(void) {}
 void device_enable_irq(void) {}
