@@ -47,6 +47,14 @@ void dcd_disconnect()
 
 bool dcd_edpt_open(uint8_t ep_addr, uint8_t ep_type, uint16_t ep_mps)
 {
+    xfer_ctl_t* p = &xfer_status[EP_NUM(ep_addr)][EP_DIR_IN];
+    // ctrl xfer starts with pid data1
+    // other xfer starts with pid data0
+    if (EP_NUM(ep_addr) == 0) {
+        p->toggle = 1;
+    } else {
+        p->toggle = 0;
+    }
     return true;
 }
 
@@ -60,13 +68,6 @@ void dcd_edpt_xfer(uint8_t ep_addr, const uint8_t *buffer, uint16_t total_bytes)
     p->buffer = (uint8_t*)buffer;
     p->total_len = total_bytes;
     p->queued_len = 0; // clear sent bytes
-
-    // ctrl xfer starts with pid data1
-    // other xfer starts with pid data0
-    // FIXME: isoc has no data toggle
-    uint8_t toggle = 0;
-    if (EP_NUM(ep_addr) == 0) toggle = 1;
-    p->toggle = toggle;
 
     // so only send data if (short_packet || queued_len != total_len)
     // MPS multiple ZLP is handled by upper layer
@@ -121,6 +122,8 @@ static void dcd_handle_rx() {
         if (setup) {
             // setup
             receive_packet(setup_buf, 8);
+            xfer_ctl_t* p = &xfer_status[ep][EP_DIR_IN];
+            p->toggle = 1; // reset toggle for ctrl ep
             dcd_event_setup_received(setup_buf);
             uint16_t length = setup_buf[6] | ((uint16_t)setup_buf[7] << 8);
             if ((setup_buf[0] & 0x80) == 0 && length != 0) {
@@ -159,6 +162,7 @@ static inline void send_data_complete(uint8_t ep) {
     int remain = p->total_len - p->queued_len;
     int sent = remain > EP_SIZE ? EP_SIZE : remain;
     p->queued_len += sent;
+    // FIXME: isoc has no data toggle
     p->toggle = 1 - p->toggle;
     // it is safe to clear this flag no matter we have sent short packet or not
     p->short_packet = false;
