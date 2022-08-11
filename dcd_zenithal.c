@@ -73,6 +73,10 @@ void dcd_edpt_xfer(uint8_t ep_addr, const uint8_t *buffer, uint16_t total_bytes)
     // MPS multiple ZLP is handled by upper layer
     p->short_packet = p->total_len == 0;
 
+    // enable TX interrupt for this ep
+    uint32_t interrupt_enable = reg_read32(USB_INTERRUPT_ENABLE);
+    interrupt_enable |= USB_INTERRUPT_ENABLE_TX_BIT_MASK(ep_addr);
+    reg_write32(USB_INTERRUPT_ENABLE, interrupt_enable);
     // actually send data in IRQ handler
 }
 
@@ -166,6 +170,16 @@ static inline void send_data_complete(uint8_t ep) {
     p->toggle = 1 - p->toggle;
     // it is safe to clear this flag no matter we have sent short packet or not
     p->short_packet = false;
+
+    // enable RX if we have sent all data in xfer_status
+    // we are ready for next RX
+    // TODO: only for this ep
+    // NOTE: this also works for short_packet
+    if (p->queued_len == p->total_len) {
+        uint32_t interrupt_enable = reg_read32(USB_INTERRUPT_ENABLE);
+        interrupt_enable |= USB_INTERRUPT_ENABLE_RX_BIT_MASK;
+        reg_write32(USB_INTERRUPT_ENABLE, interrupt_enable);
+    }
 }
 
 static inline void send_data(uint8_t ep, xfer_ctl_t* p) {
@@ -181,21 +195,25 @@ static inline void send_data(uint8_t ep, xfer_ctl_t* p) {
     reg_write8(USB_TX_PRODUCED(ep), 1);
 }
 
-// only protocol stall on ep 0 now
-static inline void send_stall(xfer_ctl_t* p) {
-    reg_write8(USB_STALL, 1);
-    p->stall = 0;
-}
-
 static inline void send_packet(uint8_t ep) {
     xfer_ctl_t* p = &xfer_status[ep][EP_DIR_IN];
     if (p->short_packet || p->queued_len != p->total_len) {
         send_data(ep, p);
     } else {
+        uint32_t interrupt_enable = reg_read32(USB_INTERRUPT_ENABLE);
+        // disable this tx interrupt until main_loop calls edpt_xfer
+        // this reduces the cost of IRQ handling
+        interrupt_enable &= ~(USB_INTERRUPT_ENABLE_TX_BIT_MASK(ep));
+        // HACK: disable the rx interrupt until we have sent all data in edpt_xfer
+        // otherwise the next rx could override data in internal buffer like ccid buffer
+        // FIXME: hardware should enable rx interrupt for setup packet
+        // FIXME: interrupt ep should not disable rx
+        interrupt_enable &= ~(USB_INTERRUPT_ENABLE_RX_BIT_MASK);
+        // make it effective
+        reg_write32(USB_INTERRUPT_ENABLE, interrupt_enable);
         // only clear interrupt bit but not send data
         // NOTE: already NAKed in hardware
         // only ask USBD to produce data (may not)
-        // TODO: if not, mask this interrupt until next edpt_xfer
         dcd_event_data_in(ep, p->buffer);
     }
 }
@@ -231,19 +249,21 @@ static void dcd_handle_tx(uint8_t ep) {
 
 void dcd_handle_interrupt()
 {
+    // should check both ip and ie
     uint32_t ip = reg_read32(USB_INTERRUPT);
-    if (ip & USB_INTERRUPT_RESET_BIT_MASK) {
+    uint32_t ie = reg_read32(USB_INTERRUPT_ENABLE);
+    if ((ip & USB_INTERRUPT_RESET_BIT_MASK) && (ie & USB_INTERRUPT_ENABLE_RESET_BIT_MASK)) {
         dcd_event_bus_reset();
         reg_write32(USB_INTERRUPT, USB_INTERRUPT_RESET_BIT_MASK);
     }
 
-    if (ip & USB_INTERRUPT_RX_BIT_MASK) {
+    if ((ip & USB_INTERRUPT_RX_BIT_MASK) && (ie & USB_INTERRUPT_ENABLE_RX_BIT_MASK)) {
         dcd_handle_rx();
         reg_write32(USB_INTERRUPT, USB_INTERRUPT_RX_BIT_MASK);
     }
 
     for (uint8_t ep = 0; ep != EP_MAX; ++ep) {
-        if (ip & USB_INTERRUPT_TX_BIT_MASK(ep)) {
+        if ((ip & USB_INTERRUPT_TX_BIT_MASK(ep)) && (ie & USB_INTERRUPT_ENABLE_TX_BIT_MASK(ep))) {
             dcd_handle_tx(ep);
             reg_write32(USB_INTERRUPT, USB_INTERRUPT_TX_BIT_MASK(ep));
         }
