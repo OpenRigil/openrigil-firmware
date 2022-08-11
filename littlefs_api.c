@@ -60,7 +60,7 @@ int littlefs_api_prog(const struct lfs_config *c, lfs_block_t block,
         // pp
         uint8_t pp[4] = {0x02};
         fill_addr(pp + 1, block, off + sent);
-        DBG_MSG("at %X with len %X\n", addr, to_send);
+        //DBG_MSG("at %X with len %X\n", addr, to_send);
         spi_transfer_cmd_addr_with_payload(pp, buffer + sent, NULL, to_send);
         sent += to_send;
         // HACK: otherwise the first bits of the next transfer would corrupt
@@ -127,15 +127,15 @@ void littlefs_init() {
     config.lookahead_buffer = lookahead_buffer;
     DBG_MSG("Flash %u blocks (%u bytes)\r\n", config.block_count, FLASH_BLOCK_SIZE);
 
-    int err;
-    for (int retry = 0; retry < 3; retry++) {
-        err = fs_mount(&config);
-        if (!err) return;
-    }
+    //int err;
+    //for (int retry = 0; retry < 3; retry++) {
+    //    err = fs_mount(&config);
+    //    if (!err) return;
+    //}
     // should happen for the first boot
     DBG_MSG("Formating data area...\r\n");
     fs_format(&config);
-    err = fs_mount(&config);
+    int err = fs_mount(&config);
     if (err) {
         ERR_MSG("Failed to mount FS after formating\r\n");
         for (;;)

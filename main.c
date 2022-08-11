@@ -27,6 +27,12 @@ int main(void)
     init_apdu_buffer();
     DBG_MSG("Applets Init\n");
 
+    int ret = openpgp_install(1);
+    if (ret < 0) {
+        DBG_MSG("Reset failed");
+        while (1);
+    }
+
     // avoid touch
     set_nfc_state(1);
 
