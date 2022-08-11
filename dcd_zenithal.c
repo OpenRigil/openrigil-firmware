@@ -95,6 +95,13 @@ uint32_t dcd_edpt_get_rx_size(uint8_t ep_addr)
 
 void dcd_edpt_stall(uint8_t ep_addr)
 {
+    uint32_t interrupt_enable = reg_read32(USB_INTERRUPT_ENABLE);
+    // enable TX interrupt for this ep in case we have disabled it
+    interrupt_enable |= USB_INTERRUPT_ENABLE_TX_BIT_MASK(EP_NUM(ep_addr));
+    // enable RX interrupt for this ep in case we have disabled it
+    interrupt_enable |= USB_INTERRUPT_ENABLE_RX_BIT_MASK;
+    reg_write32(USB_INTERRUPT_ENABLE, interrupt_enable);
+    // stall for one transaction
     reg_write8(USB_STALL, 1);
 }
 
