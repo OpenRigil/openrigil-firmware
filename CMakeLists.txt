@@ -21,6 +21,9 @@ add_executable(usbbootrom
 add_definitions(-DDEVICE_CONFIG_FILE="${CMAKE_CURRENT_SOURCE_DIR}/device-config.h")
 
 add_definitions(-DDEBUG_OUTPUT)
+add_definitions(-DLFS_NO_DEBUG)
+add_definitions(-DLFS_NO_WARN)
+add_definitions(-DLFS_NO_ERROR)
 
 set(USE_MBEDCRYPTO OFF CACHE BOOL "" FORCE)
 set(ENABLE_DEBUG_OUTPUT ON CACHE BOOL "" FORCE)
