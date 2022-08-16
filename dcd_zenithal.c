@@ -81,6 +81,7 @@ void dcd_edpt_prepare(uint8_t ep_addr, uint8_t *buffer, uint16_t total_bytes)
     xfer_ctl_t* p = &xfer_status[EP_NUM(ep_addr)][EP_DIR_OUT];
     p->buffer = buffer;
     p->total_len = total_bytes;
+    p->queued_len = 0; // received none now
     reg_write8(USB_RX_CONSUMED, 1);
 }
 
@@ -100,12 +101,12 @@ void dcd_edpt_clear_stall(uint8_t ep_addr)
 
 /*------------------------------------------------------------------*/
 
-static uint16_t receive_packet(uint8_t* buf, size_t len) {
+static uint16_t receive_packet(uint8_t* buf, size_t off, size_t len) {
     uint16_t i = 0;
     while (!reg_read8(USB_RX_EMPTY)) {
-        int t = reg_read8(USB_RX_FIFO);
+        uint8_t t = reg_read8(USB_RX_FIFO);
         if (i < len) {
-            buf[i] = t;
+            buf[i + off] = t;
         }
         ++i;
     }
@@ -121,7 +122,7 @@ static void dcd_handle_rx() {
     if (ep == 0) {
         if (setup) {
             // setup
-            receive_packet(setup_buf, 8);
+            receive_packet(setup_buf, 0, 8);
             xfer_ctl_t* p = &xfer_status[ep][EP_DIR_IN];
             p->toggle = 1; // reset toggle for ctrl ep
             dcd_event_setup_received(setup_buf);
@@ -138,18 +139,18 @@ static void dcd_handle_rx() {
             }
         } else {
             xfer_ctl_t* p = &xfer_status[ep][EP_DIR_OUT];
-            p->queued_len = receive_packet(p->buffer, p->total_len);
+            p->queued_len += receive_packet(p->buffer, p->queued_len, p->total_len);
             dcd_event_data_out(ep, p->buffer);
-            if (p->buffer == NULL) {
-                // DARK MAGIC: 'ctrl in status stage'
-                // the usb stack above wont call edpt_prepare for 'ctrl in status'
+            if (p->queued_len == p->total_len) {
+                // DARK MAGIC: 'ctrl in status stage' or 'ctrl out data stage last data'
+                // the usb stack above wont call edpt_prepare
                 // so we do it here
                 dcd_edpt_prepare(0, NULL, 0);
             }
         }
     } else {
         xfer_ctl_t* p = &xfer_status[ep][EP_DIR_OUT];
-        p->queued_len = receive_packet(p->buffer, p->total_len);
+        p->queued_len += receive_packet(p->buffer, p->queued_len, p->total_len);
         dcd_event_data_out(ep, p->buffer);
         // do so in edpt_prepare in dcd_event_data_out
         //reg_write8(USB_RX_CONSUMED, 1);
