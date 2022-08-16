@@ -1,3 +1,4 @@
 usbbootrom.bin
 usbbootrom
 build
+git-rev.h
