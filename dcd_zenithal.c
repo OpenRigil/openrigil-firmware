@@ -201,14 +201,18 @@ static inline void send_packet(uint8_t ep) {
     }
 }
 
-static void dcd_handle_tx(uint8_t ep) {
+static void dcd_handle_ack(uint8_t ep) {
     uintptr_t reg = USB_TX_STATUS(ep);
     uint8_t status = reg_read8(reg);
     if (status & USB_TX_STATUS_ACKED_BIT_MASK) {
         send_data_complete(ep);
         reg_write8(reg, USB_TX_STATUS_ACKED_BIT_MASK);
     }
+}
 
+static void dcd_handle_nak(uint8_t ep) {
+    uintptr_t reg = USB_TX_STATUS(ep);
+    uint8_t status = reg_read8(reg);
     if (status & USB_TX_STATUS_NAKED_BIT_MASK) {
         send_packet(ep);
         // NOTE: must write PRODUCED before clear NAKED
@@ -233,9 +237,20 @@ static void dcd_handle_tx(uint8_t ep) {
 void dcd_handle_interrupt()
 {
     uint32_t ip = reg_read32(USB_INTERRUPT);
+    // handle reset first
     if (ip & USB_INTERRUPT_RESET_BIT_MASK) {
         dcd_event_bus_reset();
         reg_write32(USB_INTERRUPT, USB_INTERRUPT_RESET_BIT_MASK);
+    }
+
+    // must handle tx ack before rx
+    // otherwise it may happen that we consumed previous tx ack for this rx
+    // leading to data of this tx not sent but assumed acked
+    for (uint8_t ep = 0; ep != EP_MAX; ++ep) {
+        if (ip & USB_INTERRUPT_TX_BIT_MASK(ep)) {
+            dcd_handle_ack(ep);
+            /* clear USB_INTERRUPT in tx ack */
+        }
     }
 
     if (ip & USB_INTERRUPT_RX_BIT_MASK) {
@@ -243,9 +258,11 @@ void dcd_handle_interrupt()
         reg_write32(USB_INTERRUPT, USB_INTERRUPT_RX_BIT_MASK);
     }
 
+    // must handle tx nak after rx
+    // so that we have data to send
     for (uint8_t ep = 0; ep != EP_MAX; ++ep) {
         if (ip & USB_INTERRUPT_TX_BIT_MASK(ep)) {
-            dcd_handle_tx(ep);
+            dcd_handle_nak(ep);
             reg_write32(USB_INTERRUPT, USB_INTERRUPT_TX_BIT_MASK(ep));
         }
     }
