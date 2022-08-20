@@ -9,6 +9,7 @@ project(openrigil-usb C ASM)
 add_executable(usbbootrom
     "entry.S"
     "main.c"
+    "mmm_test.c"
     "device.c"
     "uart.c"
     "flash.c"

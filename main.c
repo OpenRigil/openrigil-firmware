@@ -17,6 +17,8 @@ int main(void)
     uart_init();
     DBG_MSG("UART Init\n");
 
+    mmm_test();
+
     flash_init();
     DBG_MSG("FLASH Init\n");
 
