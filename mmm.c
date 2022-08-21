@@ -69,25 +69,12 @@ int mm_mul(uint32_t block, uint32_t *ab, const uint32_t *p, const uint32_t *a, c
         reg_write32(MMM_A, a[i]);
         reg_write32(MMM_B, b[i]);
     }
-    // if block < MMM_BLOCK, e.g. block = 8 but MMM_BLOCK = 256
-    // it means we are computing mmm256 but the device can compute mmm2048
-    // so we need to fill all the extra 0 in device
-    for(uint32_t i = block; i < MMM_BLOCK; ++i) {
-        reg_write32(MMM_P, 0);
-        reg_write32(MMM_A, 0);
-        reg_write32(MMM_B, 0);
-    }
     
     // wait for peripheral to complete
     while ((reg_read8(MMM_STATUS) & 0x1) == 0) ;
 
     for(uint32_t i = 0; i < block; i++) {
         ab[i] = reg_read32(MMM_OUT);
-    }
-    // clear fifo by reading extra results from device
-    for(uint32_t i = block; i < MMM_BLOCK; ++i) {
-        uint32_t _ = reg_read32(MMM_OUT);
-        (void)_;
     }
 
     // clear peripheral
