@@ -9,6 +9,11 @@ project(openrigil-usb C ASM)
 add_executable(usbbootrom
     "entry.S"
     "main.c"
+    "bn.c"
+    "mmm.c"
+    "mmm_test.c"
+    "25519.c"
+    "25519_test.c"
     "device.c"
     "uart.c"
     "flash.c"
@@ -17,6 +22,9 @@ add_executable(usbbootrom
     "dcd_zenithal.c"
     "littlefs_api.c"
 )
+
+# config of the accelerator
+add_definitions(-DMMM_BLOCK=8)
 
 add_definitions(-DMBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_SOURCE_DIR}/mbedtls-config.h")
 add_definitions(-DDEVICE_CONFIG_FILE="${CMAKE_CURRENT_SOURCE_DIR}/device-config.h")
@@ -39,5 +47,5 @@ add_custom_target(gitrev
         COMMAND git describe --always --tags --long --abbrev=8 --dirty >> ${CMAKE_CURRENT_SOURCE_DIR}/${gitrev}
         )
 
-target_link_libraries(usbbootrom PRIVATE canokey-core c m gloss)
+target_link_libraries(usbbootrom PRIVATE canokey-core c m)
 add_dependencies(usbbootrom gitrev)
