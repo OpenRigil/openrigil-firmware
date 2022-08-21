@@ -19,6 +19,7 @@ int main(void)
 
     mmm_test();
     test_ed25519_public();
+    test_ed25519_sign();
 
     flash_init();
     DBG_MSG("FLASH Init\n");

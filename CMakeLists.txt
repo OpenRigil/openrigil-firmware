@@ -24,7 +24,7 @@ add_executable(usbbootrom
 )
 
 # config of the accelerator
-add_definitions(-DMMM_BLOCK=8)
+add_definitions(-DMMM_BLOCK=64)
 
 add_definitions(-DMBEDTLS_CONFIG_FILE="${CMAKE_CURRENT_SOURCE_DIR}/mbedtls-config.h")
 add_definitions(-DDEVICE_CONFIG_FILE="${CMAKE_CURRENT_SOURCE_DIR}/device-config.h")

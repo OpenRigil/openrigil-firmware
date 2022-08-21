@@ -14,6 +14,9 @@ typedef union {
   uint8_t as_u8[32];
 } BN256;
 
+// 256-bit BN represented as 8 uint32_t
+#define BLOCK 8
+
 #define BN_ZERO(x)    do { memset((x)->as_u8, 0x00, 32); } while(0)
 #define BN_ONE(x)    do { BN_ZERO(x); (x)->as_u8[0] = 0x01; } while(0)
 #define BN_COPY(r, x)    do { memcpy((r)->as_u8, (x)->as_u8, 32); } while(0)
@@ -21,31 +24,29 @@ typedef union {
 
 typedef struct _para {
   BN256 _PRIME;
-  BN256 _ONE;
+  BN256 _TWO;
   BN256 _R2;
-  uint32_t _block;
 } para_t;
 
 #define PRIME (&(para->_PRIME))
-#define ONE (&(para->_ONE))
 #define R2 (&(para->_R2))
-#define BLOCK (para->_block)
+#define TWO (&(para->_TWO))
 
 void init_para_25519(para_t *para) {
-  BLOCK = 8; // 256-bit data
-
   // P=2^255-19
   BN_ALL_ONE(PRIME);
   PRIME->as_u8[0] = 0xED;
   PRIME->as_u8[31] = 0x7F;
-
-  BN_ONE(ONE);
 
   // R=2^256
   // R^2 % P = 0x05A4
   BN_ZERO(R2);
   R2->as_u8[0] = 0xA4;
   R2->as_u8[1] = 0x05;
+
+  // 2*R % p = 0x4C
+  BN_ZERO(TWO);
+  TWO->as_u8[0] = 0x4C;
 }
 
 #define MM_MUL(r, x, y) do { mm_mul(BLOCK, (r)->as_u32, PRIME->as_u32, (x)->as_u32, (y)->as_u32) ; } while(0)
@@ -136,22 +137,19 @@ void mm_inv_25519(para_t *para, BN256 *r, BN256 *x) {
  * Gy: 0x6666666666666666666666666666666666666666666666666666666666666658
  */
 
-typedef struct _field_25519 {
-  BN256 _TWO;
-} field_25519_t;
-
-#define TWO (&(field_25519->_TWO))
-
 // little endian
 static const uint8_t L_U8[] = {0xED, 0xD3, 0xF5, 0x5C, 0x1A, 0x63, 0x12, 0x58, 0xD6, 0x9C, 0xF7,
                                0xA2, 0xDE, 0xF9, 0xDE, 0x14, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10};
-static const BN256 *L = (const BN256 *)&L_U8;
+static const BN256 *L = (const BN256 *)L_U8;
+
+#define MM_MUL_L(r, x, y) do { mm_mul(BLOCK, (r)->as_u32, L->as_u32, (x)->as_u32, (y)->as_u32) ; } while(0)
+#define MM_ADD_L(r, x, y) do { mm_mul(BLOCK, (r)->as_u32, L->as_u32, (x)->as_u32, (y)->as_u32) ; } while(0)
 
 static const uint8_t R2L_U8[] = {0x01, 0x0F, 0x9C, 0x44, 0xE3, 0x11, 0x06, 0xA4, 0x47, 0x93, 0x85,
                                  0x68, 0xA7, 0x1B, 0x0E, 0xD0, 0x65, 0xBE, 0xF5, 0x17, 0xD2, 0x73,
                                  0xEC, 0xCE, 0x3D, 0x9A, 0x30, 0x7C, 0x1B, 0x41, 0x99, 0x03};
-static const BN256 *R2L = (const BN256 *)&R2L_U8;
+static const BN256 *R2L = (const BN256 *)R2L_U8;
 
 // The following constants are in Montgomery field
 static const uint8_t COEFFICIENT2D_MON_U8[] = {0xF4, 0xD3, 0x8F, 0xBE, 0xFD, 0x17, 0xDB, 0x01, 0xE7, 0x52, 0x8C,
@@ -162,23 +160,16 @@ static const BN256 *COEFFICIENT_2D = (const BN256 *)&COEFFICIENT2D_MON_U8;
 static const uint8_t GX_MON_U8[] = {0x87, 0xA2, 0x9D, 0x3F, 0x55, 0xBC, 0xCA, 0xE2, 0x89, 0xE4, 0x96,
                                     0x23, 0x56, 0x98, 0xA5, 0x9C, 0xB7, 0xB5, 0xE4, 0xAD, 0x6B, 0x93,
                                     0x79, 0x98, 0xD0, 0x77, 0x60, 0x7E, 0x70, 0x23, 0x9E, 0x75};
-static const BN256 *GX = (const BN256 *)&GX_MON_U8;
+static const BN256 *GX = (const BN256 *)GX_MON_U8;
 
 static const uint8_t GY_MON_U8[] = {0x4A, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
                                     0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33,
                                     0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33, 0x33};
-static const BN256 *GY = (const BN256 *)&GY_MON_U8;
+static const BN256 *GY = (const BN256 *)GY_MON_U8;
 
 // CL = 2^256 % L = 0x0FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEC6EF5BF4737DCF70D6EC31748D98951D
-static const uint8_t CL_MON_U8[] = {0x01, 0x0F, 0x9C, 0x44, 0xE3, 0x11, 0x06, 0xA4, 0x47, 0x93, 0x85,
-                                    0x68, 0xA7, 0x1B, 0x0E, 0xD0, 0x65, 0xBE, 0xF5, 0x17, 0xD2, 0x73,
-                                    0xEC, 0xCE, 0x3D, 0x9A, 0x30, 0x7C, 0x1B, 0x41, 0x99, 0x03};
-static const BN256 *CL = (const BN256 *)&CL_MON_U8;
-
-static void init_field_25519(field_25519_t *field_25519) {
-  BN_ZERO(TWO);
-  TWO->as_u8[0] = 0x4C;
-}
+// CL_MON = (CL * R) % L = (R ^ 2) % L = R2L
+static const BN256 *CL = (const BN256 *)R2L_U8;
 
 typedef struct {
   BN256 x;
@@ -188,7 +179,7 @@ typedef struct {
 } ehc; // extended homogeneous coordinates
 
 // see RFC 8032 5.1.4
-static void point_add(para_t *para, field_25519_t *field_25519, ehc *X, ehc *A, ehc *B) {
+static void point_add(para_t *para, ehc *X, ehc *A, ehc *B) {
   //printf("point_add\n");
   // allocate in stack
   BN256 _a, _b, _c, _d, _e, _f, _g, _h;
@@ -217,7 +208,7 @@ static void point_add(para_t *para, field_25519_t *field_25519, ehc *X, ehc *A, 
 }
 
 // see RFC 8032 5.1.4
-static void point_double(para_t *para, field_25519_t *field_25519, ehc *X, ehc *A) {
+static void point_double(para_t *para, ehc *X, ehc *A) {
   //printf("point_double\n");
   // allocate in stack
   BN256 _a, _b, _c, _d, _e, _f, _g, _h;
@@ -269,11 +260,11 @@ void print_ehc(const char* name, ehc *t) {
     printf("\n");
 }
 
-static void compute_kG(para_t *para, field_25519_t *field_25519, BN256 *x, BN256 *y, BN256 *k) {
+static void compute_kG(para_t *para, BN256 *x, BN256 *y, BN256 *k) {
   // allocate in stack
   ehc ret;
   ehc tmp;
-  // ret = (0, 1, 1, 0) in Montgomery field
+  // ret = (0, 1, 1, 0)
   BN_ZERO(&ret.x);
   BN_ONE(&ret.y);
   BN_ONE(&ret.z);
@@ -281,17 +272,19 @@ static void compute_kG(para_t *para, field_25519_t *field_25519, BN256 *x, BN256
   // tmp = (GX, GY, 1, GX * GY) in Montgomery field
   BN_COPY(&tmp.x, GX);
   BN_COPY(&tmp.y, GY);
-  MM_MUL(&tmp.z, ONE, R2); // TODO
+  BN256 _ONE, *ONE = &_ONE;
+  BN_ONE(ONE);
+  MM_MUL(&tmp.z, ONE, R2);
   MM_MUL(&tmp.t, GX, GY);
   //print_ehc("tmp", &tmp);
   while (!is_bn_zero(BLOCK, k->as_u32)) {
 		//print_bn256("k", k);
     // TODO: may not constant time
     if (k->as_u8[0] & 1) {
-      point_add(para, field_25519, &ret, &ret, &tmp);
+      point_add(para, &ret, &ret, &tmp);
   		//print_ehc("ret", &ret);
     }
-    point_double(para, field_25519, &tmp, &tmp);
+    point_double(para, &tmp, &tmp);
     bn_shift_right_by_1(BLOCK, k->as_u32);
 		//print_ehc("tmp", &tmp);
   }
@@ -307,9 +300,6 @@ void ed25519_publickey(const uint8_t *sk, uint8_t *pk) {
   para_t para;
   init_para_25519(&para);
 
-  field_25519_t field_25519;
-  init_field_25519(&field_25519);
-
   uint8_t hash[64];
   sha512_raw(sk, 32, hash);
   hash[0] &= 248;
@@ -319,9 +309,93 @@ void ed25519_publickey(const uint8_t *sk, uint8_t *pk) {
   BN256 *s = (BN256 *)hash;
 
   BN256 x, y;
-  compute_kG(&para, &field_25519, &x, &y, s);
+  compute_kG(&para, &x, &y, s);
   y.as_u8[31] ^= ((x.as_u8[0] & 1) << 7); 
   memcpy(pk, y.as_u8, 32);
+}
+
+void ed25519_sign(const uint8_t *m, size_t mlen, const uint8_t *sk, const uint8_t *pk, uint8_t *RS) {
+  // allocate in stack
+  para_t para;
+  init_para_25519(&para);
+
+  BN256 _R, _S, _X, _Y;
+  BN256 *R = &_R, *S = &_S, *X = &_X, *Y = &_Y;
+
+  // Step 1: hash the private key
+  uint8_t hash[64];
+  sha512_raw(sk, 32, hash);
+  hash[0] &= 248;
+  hash[31] &= 127;
+  hash[31] |= 64;
+  // store the first half to scalar S as the little endian number
+  memcpy(S->as_u8, hash, 32);
+
+  // Step 2: hash the prefix (the second half of the hash) and the message
+  sha512_init();
+  sha512_update(hash + 32, 32);
+  sha512_update(m, mlen);
+  sha512_final(hash);
+
+  // Step 3: compute [R]B
+  // reduce the 64-bit hash to R
+  // prepare hash = a * 2^256 + b
+  // also reuse hash buffer
+  BN256 *B = (BN256 *)hash;
+  BN256 *A = (BN256 *)(hash + 32);
+  // compute hash % L = (a * 2^256 + b) % L = (a * CL + b) % L
+  // where CL = 2^256 % L = 0x0ffffffffffffffffffffffffffffffec6ef5bf4737dcf70d6ec31748d98951d
+  // for mont mul, we use CL = (2^256 * R) % L here
+  BN256 _T, *T = &_T;
+  // load a
+  MM_MUL_L(A, A, R2L);
+  // load b
+  MM_MUL_L(B, B, R2L);
+  // t = a * CL, a = t + b
+  MM_MUL_L(T, A, CL);
+  MM_ADD_L(A, T, B);
+  // unload a to R
+  BN_ONE(T);
+  MM_MUL_L(R, A, T);
+  // backup R
+  BN_COPY(T, R);
+  // compute [R]B in 25519
+  compute_kG(&para, X, Y, R);
+  // restore R
+  BN_COPY(R, T);
+  // encoding the point to first half of RS
+  Y->as_u8[31] ^= ((X->as_u8[0] & 1) << 7);
+  memcpy(RS, Y->as_u8, 32);
+
+  // Step 4: hash again H(R || pk || m)
+  sha512_init();
+  sha512_update(Y->as_u8, 32);
+  sha512_update(pk, 32);
+  sha512_update(m, mlen);
+  sha512_final(hash);
+  // reduce the 64-bit hash to x
+  // compute hash % L = (a * 2^256 + b) % L = (a * CL + b) % L
+  // load a
+  MM_MUL_L(A, A, R2L);
+  // load b
+  MM_MUL_L(B, B, R2L);
+  // t = a * CL, a = t + b
+  MM_MUL_L(T, A, CL);
+  MM_ADD_L(A, T, B);
+
+  // Step 5: compute S = (r + k * s) mod L
+  BN256 *K = A;
+  // load r
+  MM_MUL_L(R, R, R2L);
+  // load s
+  MM_MUL_L(S, S, R2L);
+  // t = k * s, s = r + t
+  MM_MUL_L(T, K, S);
+  MM_ADD_L(S, R, T);
+  // unload S
+  BN_ONE(T);
+  MM_MUL_L(S, S, T);
+  memcpy(RS + 32, S->as_u8, 32);
 }
 
 // vim: ts=2:sts=2:sw=2
