@@ -144,7 +144,7 @@ static const uint8_t L_U8[] = {0xED, 0xD3, 0xF5, 0x5C, 0x1A, 0x63, 0x12, 0x58, 0
 static const BN256 *L = (const BN256 *)L_U8;
 
 #define MM_MUL_L(r, x, y) do { mm_mul(BLOCK, (r)->as_u32, L->as_u32, (x)->as_u32, (y)->as_u32) ; } while(0)
-#define MM_ADD_L(r, x, y) do { mm_mul(BLOCK, (r)->as_u32, L->as_u32, (x)->as_u32, (y)->as_u32) ; } while(0)
+#define MM_ADD_L(r, x, y) do { mm_add(BLOCK, (r)->as_u32, L->as_u32, (x)->as_u32, (y)->as_u32) ; } while(0)
 
 static const uint8_t R2L_U8[] = {0x01, 0x0F, 0x9C, 0x44, 0xE3, 0x11, 0x06, 0xA4, 0x47, 0x93, 0x85,
                                  0x68, 0xA7, 0x1B, 0x0E, 0xD0, 0x65, 0xBE, 0xF5, 0x17, 0xD2, 0x73,
