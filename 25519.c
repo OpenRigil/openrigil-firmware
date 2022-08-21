@@ -180,7 +180,6 @@ typedef struct {
 
 // see RFC 8032 5.1.4
 static void point_add(para_t *para, ehc *X, ehc *A, ehc *B) {
-  //printf("point_add\n");
   // allocate in stack
   BN256 _a, _b, _c, _d, _e, _f, _g, _h;
   BN256 *a = &_a, *b = &_b, *c = &_c, *d = &_d, *e = &_e, *f = &_f, *g = &_g, *h = &_h;
@@ -209,7 +208,6 @@ static void point_add(para_t *para, ehc *X, ehc *A, ehc *B) {
 
 // see RFC 8032 5.1.4
 static void point_double(para_t *para, ehc *X, ehc *A) {
-  //printf("point_double\n");
   // allocate in stack
   BN256 _a, _b, _c, _d, _e, _f, _g, _h;
   BN256 *a = &_a, *b = &_b, *c = &_c, *d = &_d, *e = &_e, *f = &_f, *g = &_g, *h = &_h;
@@ -232,7 +230,6 @@ static void point_double(para_t *para, ehc *X, ehc *A) {
 }
 
 static void point_reduce(para_t *para, ehc *P) {
-  //printf("point_reduce\n");
   // allocate in stack
   BN256 _zinv;
   BN256 *zinv = &_zinv;
@@ -276,20 +273,14 @@ static void compute_kG(para_t *para, BN256 *x, BN256 *y, BN256 *k) {
   BN_ONE(ONE);
   MM_MUL(&tmp.z, ONE, R2);
   MM_MUL(&tmp.t, GX, GY);
-  //print_ehc("tmp", &tmp);
   while (!is_bn_zero(BLOCK, k->as_u32)) {
-		//print_bn256("k", k);
-    // TODO: may not constant time
     if (k->as_u8[0] & 1) {
       point_add(para, &ret, &ret, &tmp);
-  		//print_ehc("ret", &ret);
     }
     point_double(para, &tmp, &tmp);
     bn_shift_right_by_1(BLOCK, k->as_u32);
-		//print_ehc("tmp", &tmp);
   }
   point_reduce(para, &ret);
-	//print_ehc("ret", &ret);
   MM_MUL(x, &ret.x, ONE);
   MM_MUL(y, &ret.y, ONE);
 }
