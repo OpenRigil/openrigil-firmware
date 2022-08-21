@@ -84,6 +84,43 @@ int mm_mul(uint32_t block, uint32_t *ab, const uint32_t *p, const uint32_t *a, c
     return 0;
 }
 
+// same as above except ab, p, a, b in big endian
+// i.e. a[block-1] >> 24 is the least significant byte
+int mm_mul_be(uint32_t block, uint32_t *ab, const uint32_t *p, const uint32_t *a, const uint32_t *b) {
+    // num in bits but -1
+    uint16_t input_width = block * 32 - 1;
+
+    if (block > MMM_BLOCK) {
+        return -1;
+    }
+
+    reg_write16(MMM_IW, input_width);
+    reg_write8(MMM_PPRIME, 1);
+    reg_write32(MMM_P, BSWAP32(p[block - 1]));
+    reg_write32(MMM_A, BSWAP32(a[block - 1]));
+    reg_write32(MMM_B, BSWAP32(b[block - 1]));
+    // send ready signal
+    reg_write8(MMM_CONTROL, 2);
+    for(uint32_t i = 1; i < block; i++) {
+        reg_write32(MMM_P, BSWAP32(p[block - 1 - i]));
+        reg_write32(MMM_A, BSWAP32(a[block - 1 - i]));
+        reg_write32(MMM_B, BSWAP32(b[block - 1 - i]));
+    }
+
+    // wait for peripheral to complete
+    while ((reg_read8(MMM_STATUS) & 0x1) == 0) ;
+
+    for(uint32_t i = 0; i < block; i++) {
+        ab[block - 1 - i] = BSWAP32(reg_read32(MMM_OUT));
+    }
+
+    // clear peripheral
+    reg_write8(MMM_CONTROL, 0);
+    //printf("mul\n");
+    //print_arg(block, ab, p, a, b);
+    return 0;
+}
+
 /**
  * Montgomery Modular Addition
  *
