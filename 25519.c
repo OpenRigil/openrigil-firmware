@@ -19,7 +19,7 @@ typedef union {
 
 #define BN_ZERO(x)    do { memset((x)->as_u8, 0x00, 32); } while(0)
 #define BN_ONE(x)    do { BN_ZERO(x); (x)->as_u8[0] = 0x01; } while(0)
-#define BN_COPY(r, x)    do { memcpy((r)->as_u8, (x)->as_u8, 32); } while(0)
+#define BN_COPY(r, x)    do { memmove((r)->as_u8, (x)->as_u8, 32); } while(0)
 #define BN_ALL_ONE(x) do { memset((x)->as_u8, 0xFF, 32); } while(0)
 
 typedef struct _para {

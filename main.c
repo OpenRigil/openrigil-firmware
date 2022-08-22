@@ -17,12 +17,13 @@ void test() {
     test_ed25519_public();
     test_ed25519_sign();
     test_rsa2048_get_public();
+    test_rsa2048_decrypt();
 }
 
 int main(void)
 {
     uart_init();
-    DBG_MSG("UART Init\n");
+    //DBG_MSG("UART Init\n");
 
     test();
 

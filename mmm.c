@@ -47,7 +47,7 @@ void print_arg(int block, const uint32_t *ab, const uint32_t *p, const uint32_t 
  * user should ensure a, b < p
  * hardware ensure that ab < p
  * hardware is not constant time
- * mmm could be done in-place (i.e. ab == a or ab == b)
+ * mmm could be done in-place (i.e. ab == a or ab == b or ab == p)
  */
 int mm_mul(uint32_t block, uint32_t *ab, const uint32_t *p, const uint32_t *a, const uint32_t *b) {
     // num in bits but -1
@@ -111,7 +111,10 @@ int mm_mul_be(uint32_t block, uint32_t *ab, const uint32_t *p, const uint32_t *a
     while ((reg_read8(MMM_STATUS) & 0x1) == 0) ;
 
     for(uint32_t i = 0; i < block; i++) {
-        ab[block - 1 - i] = BSWAP32(reg_read32(MMM_OUT));
+        // can not directly BSWAP(reg_read32)
+        // see the defintion of BSWAP32
+        uint32_t out = reg_read32(MMM_OUT);
+        ab[block - 1 - i] = BSWAP32(out);
     }
 
     // clear peripheral
@@ -141,11 +144,26 @@ void mm_add(uint32_t block, uint32_t *ab, const uint32_t *p, const uint32_t *a, 
     int cmp = bn_cmp(block, ab, p);
     if (carry != 0 || cmp >= 0) {
         // p <= ab < 2p
-		bn_sub(block, ab, ab, p);
+        bn_sub(block, ab, ab, p);
     }
     //printf("add\n");
     //print_arg(block, ab, p, a, b);
-	// FIXME: not constant time
+    // FIXME: not constant time
+}
+
+void mm_add_be(uint32_t block, uint32_t *ab, const uint32_t *p, const uint32_t *a, const uint32_t *b) {
+    uint32_t carry = bn_add_be(block, ab, a, b);
+    // now ab/carry is a + b
+
+    // compare ab and p
+    int cmp = bn_cmp_be(block, ab, p);
+    if (carry != 0 || cmp >= 0) {
+        // p <= ab < 2p
+        bn_sub_be(block, ab, ab, p);
+    }
+    //printf("add be\n");
+    //print_arg(block, ab, p, a, b);
+    // FIXME: not constant time
 }
 
 /**
@@ -169,3 +187,10 @@ void mm_sub(uint32_t block, uint32_t *ab, const uint32_t *p, const uint32_t *a, 
     //print_arg(block, ab, p, a, b);
 }
 
+void mm_sub_be(uint32_t block, uint32_t *ab, const uint32_t *p, const uint32_t *a, const uint32_t *b) {
+    /* used ab as tmp buf */
+    bn_sub_be(block, ab, p, b); // tmp = p - b
+    mm_add_be(block, ab, p, a, ab); // ab = (a + tmp) % p = (a + p - b) % p = (a - b) & p
+    //printf("sub be\n");
+    //print_arg(block, ab, p, a, b);
+}
