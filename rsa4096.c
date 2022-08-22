@@ -13,6 +13,9 @@ typedef union {
   uint8_t as_u8[512];
 } BE_BN4096;
 
+// for MMM_BLOCK = 64 (i.e. MMM2048 hardware), this is only used by MM_ADD_BE
+#define BLOCK_4096 128
+
 #define BE_BN4096_ZERO(x)    do { memset((x)->as_u8, 0x00, 512); } while(0)
 #define BE_BN4096_ONE(x)    do { BE_BN4096_ZERO(x); (x)->as_u8[511] = 0x01; } while(0)
 #define BE_BN4096_COPY(r, x)    do { memmove((r)->as_u8, (x)->as_u8, 512); } while(0)
@@ -126,11 +129,11 @@ int rsa4096_get_public_key(rsa_key_t *key, uint8_t *n) {
 
 // compute R2P, could not be done in place
 static void R2P_2048(BE_BN2048 *R, const BE_BN2048 *P) {
-    // first set R to 2 ^ 1023
-    // for rsa it is ensured that P > 2 ^ 1023
+    // first set R to 2 ^ 2047
+    // for rsa it is ensured that P > 2 ^ 2047
     // so that R < P
     BE_BN2048_ZERO(R);
-    BE_BN2048_SET_BIT(R, 1023);
+    BE_BN2048_SET_BIT(R, 2047);
 
     // now R = 2 ^ 2048 % P
     MM_ADD_BE(BLOCK_2048, R, P, R, R);
@@ -144,7 +147,7 @@ static void R2P_2048(BE_BN2048 *R, const BE_BN2048 *P) {
     // 2: A4 = A2 * A2 * Rinv % p = 2^4 * R % p
     // 3: A8 = A4 * A4 * Rinv % p = 2^8 * R % p
     // ...
-    // 10: A2048 = A512 * A512 * Rinv % p = 2^2048 * R % p = R^2 % p
+    // 11: A2048 = A1024 * A1024 * Rinv % p = 2^2048 * R % p = R^2 % p
     while (bits >>= 1) {
         MM_MUL_BE(BLOCK_2048, R, P, R, R);
     }
@@ -164,20 +167,19 @@ int rsa4096_private(rsa_key_t *key, const uint8_t *input, uint8_t *output) {
 
     BE_BN4096 *S = (BE_BN4096 *)output;
 
-    BE_BN4096 _R2, _TMP1, _TMP2, _SQ, _SP;
-    BE_BN4096 *R2L = &_R2, *TMP1L = &_TMP1, *TMP2L = &_TMP2, *SQL = &_SQ, *SPL = &_SP;
+    BE_BN4096 _TMP, _SQ;
+    BE_BN4096 *TMP = &_TMP;
+    BE_BN4096 *SQL = &_SQ;
     // clear HI part
-    BE_BN4096_ZERO(R2L);
-    BE_BN4096_ZERO(TMP1L);
-    BE_BN4096_ZERO(TMP2L);
     BE_BN4096_ZERO(SQL);
-    BE_BN4096_ZERO(SPL);
 
-    BE_BN2048 *R2 = (BE_BN2048 *)BE_BN4096_LO(R2L);
-    BE_BN2048 *TMP1 = (BE_BN2048 *)BE_BN4096_LO(TMP1L);
-    BE_BN2048 *TMP2 = (BE_BN2048 *)BE_BN4096_LO(TMP2L);
+    BE_BN2048 _R2, _SP;
+
+    BE_BN2048 *R2 = &_R2;
+    BE_BN2048 *TMP1 = (BE_BN2048 *)BE_BN4096_LO(TMP);
+    BE_BN2048 *TMP2 = (BE_BN2048 *)BE_BN4096_HI(TMP);
     BE_BN2048 *SQ = (BE_BN2048 *)BE_BN4096_LO(SQL);
-    BE_BN2048 *SP = (BE_BN2048 *)BE_BN4096_LO(SPL);
+    BE_BN2048 *SP = &_SP;
 
     {
     // step 1: SQ = M^DQ mod Q
@@ -249,28 +251,14 @@ int rsa4096_private(rsa_key_t *key, const uint8_t *input, uint8_t *output) {
     BE_BN2048_ONE(TMP1);
     MM_MUL_BE(BLOCK_2048, H, P, H, TMP1); // H = H' \otimes 1
 
-    //// step 4: S = SQ + H * Q mod N
-    //// compute N (use S as buffer) (in-place note: now we do not use M, so S can be used)
-    //rsa4096_get_public_key(key, S->as_u8);
-    //// get R2N
-    //R2P_4096(R2L, S);
-    //// H4096 bit H, see step 3
-    //BE_BN4096 *HL = SPL;
-    //// H' = H \otimes R2N
-    //MM_MUL_BE(BLOCK_4096, HL, S, HL, R2L);
-    //// 4096 bit Q in TMP1L
-    //BE_BN2048_COPY(TMP1, Q);
-    //BE_BN4096 *QL = TMP1L;
-    //// Q' = Q \otimes R2N
-    //MM_MUL_BE(BLOCK_4096, QL, S, QL, R2L);
-    //// H' * Q', store in QL (i.e. TMP1L)
-    //MM_MUL_BE(BLOCK_4096, QL, S, QL, HL);
-    //// H * Q in QL (i.e. TMP1L)
-    //BE_BN4096_ONE(TMP2L);
-    //MM_MUL_BE(BLOCK_4096, QL, S, QL, TMP2L); // H = H' \otimes 1
-    //// SQ + H * Q
-    //// unfortunately, ab != p for mm_add
-    //MM_ADD_BE(BLOCK_4096, TMP2L, S, SQL, QL);
-    //BE_BN4096_COPY(S, TMP2L);
+    // step 4: S = SQ + H * Q mod N
+    // compute N (use S as buffer) (in-place note: now we do not use M, so S can be used)
+    rsa4096_get_public_key(key, S->as_u8);
+    // H * Q in 4096bit TMP (note that H * Q < S = P * Q since H < P)
+    mul(TMP, H, Q);
+    // SQ + H * Q
+    // unfortunately, ab != p for mm_add
+    MM_ADD_BE(BLOCK_4096, TMP, S, SQL, TMP);
+    BE_BN4096_COPY(S, TMP);
     return 0;
 }
