@@ -148,7 +148,6 @@ void test_rsa2048_decrypt() {
   uint32_t prev = device_get_tick();
 
   rsa2048_private(&key, cipher_text, buf);
-  printf("Finish\n");
 
   uint32_t complete = device_get_tick();
   printf("rsa private end %ld (%ld -> %ld)\n", complete - prev, prev, complete);
