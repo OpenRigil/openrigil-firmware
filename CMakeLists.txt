@@ -15,6 +15,7 @@ add_executable(usbbootrom
     "25519.c"
     "25519_test.c"
     "rsa2048.c"
+    "rsa4096.c"
     "rsa_test.c"
     "device.c"
     "uart.c"

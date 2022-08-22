@@ -13,11 +13,12 @@
 #include "usb_device.h"
 
 void test() {
-    mmm_test();
-    test_ed25519_public();
-    test_ed25519_sign();
-    test_rsa2048_get_public();
-    test_rsa2048_decrypt();
+    //mmm_test();
+    //test_ed25519_public();
+    //test_ed25519_sign();
+    //test_rsa2048_get_public();
+    //test_rsa2048_decrypt();
+    test_rsa4096_get_public();
 }
 
 int main(void)
