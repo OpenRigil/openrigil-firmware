@@ -14,6 +14,7 @@ add_executable(usbbootrom
     #"mmm_test.c"
     "25519.c"
     #"25519_test.c"
+    "rsa.c"
     "rsa2048.c"
     "rsa4096.c"
     #"rsa_test.c"
