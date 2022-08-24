@@ -6,4 +6,4 @@
 #define PLIC_CLAIM        (PLIC_BASE + 0x200004)
 #define PLIC_COMPLETE     (PLIC_BASE + 0x200004)
 
-#define PLIC_USB_ID 3
+#define PLIC_USB_ID 1
