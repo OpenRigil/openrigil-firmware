@@ -3,6 +3,9 @@
 #include "bn.h"
 #include "mmm.h"
 
+// canokey-crypto
+#include "sha.h"
+
 #include <string.h>
 
 /* store BN in little endian manner (e.g. as_u32[0] for least significant 32 bit)
@@ -239,22 +242,6 @@ static void point_reduce(para_t *para, ehc *P) {
   MM_MUL(Py, Py, zinv);
   MM_MUL(Pz, Pz, zinv);
   MM_MUL(Pt, Px, Py);
-}
-
-void print_bn256(const char* name, BN256 *bn) {
-    printf("%s:", name);
-    for(int i = 0; i != 32; ++i) {
-        printf("%02X ", bn->as_u8[31 - i]);
-    }
-    printf("\n");
-}
-void print_ehc(const char* name, ehc *t) {
-    printf("ehc %s:", name);
-    print_bn256("x", &t->x);
-    print_bn256("y", &t->y);
-    print_bn256("z", &t->z);
-    print_bn256("t", &t->t);
-    printf("\n");
 }
 
 static void compute_kG(para_t *para, BN256 *x, BN256 *y, BN256 *k) {

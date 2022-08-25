@@ -9,3 +9,4 @@ set(CMAKE_C_FLAGS "-march=rv32imac -mabi=ilp32 -mcmodel=medany -std=gnu99 -O2 -W
 set(CMAKE_C_COMPILER "${CROSS_COMPILE}gcc")
 set(CMAKE_CXX_COMPILER "${CROSS_COMPILE}g++")
 set(CMAKE_ASM_COMPILER "${CROSS_COMPILE}gcc")
+set(CMAKE_OBJCOPY "${CROSS_COMPILE}objcopy")

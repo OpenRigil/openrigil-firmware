@@ -4,6 +4,7 @@
 #include "interrupt.h"
 #include "uart.h"
 #include "flash.h"
+#include "littlefs_api.h"
 
 // canokey-core
 #include "common.h"

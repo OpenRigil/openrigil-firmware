@@ -7,6 +7,9 @@
 
 #include "flash.h"
 
+// canokey-core
+#include "device.h"
+
 #define LOOKAHEAD_SIZE 32
 #define CACHE_SIZE 512
 #define WRITE_SIZE 1
